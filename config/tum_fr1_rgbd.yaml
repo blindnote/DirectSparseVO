@@ -1,0 +1,21 @@
+%YAML:1.0
+
+image.width: 640
+image.height: 480
+
+camera.fx: 517.3
+camera.fy: 516.5
+camera.cx: 318.6
+camera.cy: 255.3
+
+camera.d0: 0.2624
+camera.d1: -0.9531
+camera.d2: -0.0054
+camera.d3: 0.0026
+camera.d4: 1.1633
+
+depth.scale: 5000
+
+tracker.min_features: 50
+
+
