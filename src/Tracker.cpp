@@ -1,6 +1,7 @@
 #include "Tracker.h"
 #include "Config.h"
 #include "SparseAlignment.h"
+#include "BasicAlignment.h"
 
 Tracker::Tracker(PinholeCamera* camera)
 : _pCamera(camera)
@@ -43,7 +44,9 @@ void Tracker::TrackRefFrame(Frame* frame)
     }
      */
 
-    std::shared_ptr<SparseAlignment> pAlign = std::make_shared<SparseAlignment>(30, SparseAlignment::GaussNewton,
+   std::shared_ptr<SparseAlignment> pAlign = std::make_shared<SparseAlignment>(0, 2, 30, SparseAlignment::GaussNewton,
                                                                                 _pCamera, true);
-    pAlign->run(_ref, frame);
+   std::shared_ptr<BasicAlignment> pAlign2 = std::make_shared<BasicAlignment>(0, 2, 30, BasicAlignment::GaussNewton,
+                                                                              _pCamera, true);
+    pAlign2->run(_ref, frame);
 }

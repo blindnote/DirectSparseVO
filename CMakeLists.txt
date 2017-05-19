@@ -45,8 +45,8 @@ include_directories( ${GLOG_INCLUDE_DIRS} )
 find_package( Boost COMPONENTS filesystem REQUIRED )
 include_directories( ${Boost_INCLUDE_DIRS} )
 # fast 
-#### find_package( fast REQUIRED )
-#### include_directories( ${fast_INCLUDE_DIRS} )
+find_package( fast REQUIRED )
+include_directories( ${fast_INCLUDE_DIRS} )
 # ceres 
 ####  include_directories( "/home/rochelle/Workspace/3rdparty/ceres-solver/include/" )
 ####  include_directories( "/home/rochelle/Workspace/3rdparty/ceres-solver/build/config/" )
@@ -73,7 +73,7 @@ set( THIRD_PARTY_LIBS
     ${Sophus_LIBRARIES}
     ${GLOG_LIBRARY}
     ${Boost_LIBRARIES}
-####    ${fast_LIBRARIES}
+    ${fast_LIBRARIES}
 ####    ${CSPARSE_LIBRARY}
 ####    ${CERES_LIBRARIES}
 ####    ${CHOLMOD_LIBRARIES}

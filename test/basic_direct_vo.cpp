@@ -1,3 +1,7 @@
+//
+// Created by rochelle on 17-5-19.
+//
+
 #include <fstream>
 #include "Config.h"
 #include "Camera.h"
@@ -37,9 +41,9 @@ int main ( int argc, char** argv )
     PinholeCamera* camera = new PinholeCamera();
     camera->PrintCameraParameters();
 
-  //  Eigen::Isometry3d Tcw = Eigen::Isometry3d::Identity();
-  //  Sophus::SE3 Tcw = Sophus::SE3();
-  //  LOG(INFO) << std::endl << "Init Tcw: " << std::endl << Tcw.matrix() << std::endl;
+    //  Eigen::Isometry3d Tcw = Eigen::Isometry3d::Identity();
+    //  Sophus::SE3 Tcw = Sophus::SE3();
+    //  LOG(INFO) << std::endl << "Init Tcw: " << std::endl << Tcw.matrix() << std::endl;
 
     std::shared_ptr<Tracker> pTracker = std::make_shared<Tracker>(camera);
 
@@ -71,7 +75,7 @@ int main ( int argc, char** argv )
 
                 MapPoint* mp = Memory::CreateMapPoint();
                 mp->_pos_world = camera->Pixel2Camera(pFeature->_pixel, d / camera->scale());
-           //     LOG(INFO) << "pos_world:" << mp->_pos_world;
+                //     LOG(INFO) << "pos_world:" << mp->_pos_world;
 
                 pFeature->_depth = d / camera->scale();
                 pFeature->_mappoint = mp;

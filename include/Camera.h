@@ -72,7 +72,7 @@ public:
     {
         return Camera2World( Pixel2Camera(p_p, depth),  T_c_w );
     }
-    inline Eigen::Vector2d World2Pixel(const Eigen::Vector3d& p_w, const Sophus::SE3& T_c_w, double depth = 1)
+    inline Eigen::Vector2d World2Pixel(const Eigen::Vector3d& p_w, const Sophus::SE3& T_c_w)
     {
         return Camera2Pixel( World2Camera(p_w, T_c_w) );
     }
@@ -128,6 +128,7 @@ public:
             // cv::undistort(raw, rectified, _cvK, _cvD);
             return;
         }
+
         rectified = raw.clone();
     }
 

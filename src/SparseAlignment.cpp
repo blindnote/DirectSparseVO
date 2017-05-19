@@ -1,7 +1,9 @@
 #include <MapPoint.h>
 #include "SparseAlignment.h"
 
-SparseAlignment::SparseAlignment(int n_iter, Method method, PinholeCamera* camera, bool verbose)
+SparseAlignment::SparseAlignment(int min_level, int max_level, int n_iter,
+                                 Method method, PinholeCamera* camera, bool verbose)
+: min_level_(min_level), max_level_(max_level)
 {
     n_iter_init_ = n_iter;
     n_iter_ = n_iter_init_;
@@ -28,11 +30,14 @@ size_t SparseAlignment::run(Frame* ref_frame, Frame* cur_frame)
 
     Sophus::SE3 T_curr_from_ref(cur_frame->_TCW * ref_frame->_TCW.inverse());
 
-    mu_ = 0.1;
-    jacobian_cache_.setZero();
-    have_ref_patch_cache_ = false;
-
-    optimize(T_curr_from_ref);
+    for (level_ = max_level_; level_ >= min_level_; level_--)
+    {
+        mu_ = 0.1;
+        jacobian_cache_.setZero();
+        have_ref_patch_cache_ = false;
+        printf ( "\nPYRAMID LEVEL %i\n---------------\n", level_ );
+        optimize(T_curr_from_ref);
+    }
     cur_frame->_TCW = T_curr_from_ref * ref_frame->_TCW;
     return n_meas_ / patch_area_;
 }
@@ -40,12 +45,12 @@ size_t SparseAlignment::run(Frame* ref_frame, Frame* cur_frame)
 void SparseAlignment::preComputeReferencePatches()
 {
     const int border = patch_halfsize_ + 1;
-    const cv::Mat& ref_img = ref_frame_->_gray;
+    const cv::Mat& ref_img = ref_frame_->_pyramid[level_];
     const int stride = ref_img.cols;
-    const float scale = 1.0f;           // 1.0f/(1<<level-)
+    const float scale = 1.0f / ( 1<<level_ );          // 1.0f/(1<<level-)
     const Eigen::Vector3d ref_pos = ref_frame_->GetCamCenter();
-    LOG(INFO) << "ref:TCW:" << ref_frame_->_TCW.matrix() << std::endl << ", translation:" << ref_pos << std::endl;
-    const double focal_length = fabs(_pCamera->fx());
+
+    const double focal_length = fabs(_pCamera->focal());
     size_t feature_counter = 0;
     std::vector<bool>::iterator visibility_it = visible_fts_.begin();
 
@@ -116,7 +121,7 @@ double SparseAlignment::computeResiduals(const Sophus::SE3& T_cur_from_ref,
                                          bool compute_weight_scale)
 {
     // Warp the current image such that it aligns with the reference image
-    const cv::Mat& cur_img = cur_frame_->_gray;
+    const cv::Mat& cur_img = cur_frame_->_pyramid[level_];
 
     if (linearize_system)
         resimg_ = cv::Mat(cur_img.size(), CV_32F, cv::Scalar(0));
@@ -131,7 +136,7 @@ double SparseAlignment::computeResiduals(const Sophus::SE3& T_cur_from_ref,
 
     const int stride = cur_img.cols;
     const int border = patch_halfsize_ + 1;
-    const float scale = 1.0; // (1 << level_)
+    const float scale = 1 << level_;
     const Eigen::Vector3d ref_pos(ref_frame_->GetCamCenter());
     float chi2 = 0.0;
     size_t feature_counter = 0; // is used to compute the index of the cached jacobian
@@ -215,7 +220,7 @@ double SparseAlignment::computeResiduals(const Sophus::SE3& T_cur_from_ref,
     return chi2 / n_meas_;
 }
 
-int SparseAlignment::solve()
+bool SparseAlignment::solve()
 {
     x_ = H_.ldlt().solve( Jres_ );
     return !( std::isnan(double(x_[0])) );

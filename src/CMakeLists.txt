@@ -2,6 +2,7 @@ add_library( ds_vo SHARED
     Config.cpp
     Frame.cpp
     Memory.cpp
+    BasicAlignment.cpp
     SparseAlignment.cpp
     Tracker.cpp
 )

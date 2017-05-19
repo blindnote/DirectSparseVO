@@ -10,6 +10,12 @@
 
 struct Frame
 {
+    struct Setting
+    {
+        int _pyramid_level = 3;
+//      int _detection_threshold = 50;
+    } static _setting;
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     Frame() {}
@@ -18,6 +24,7 @@ struct Frame
     ~Frame() {}
 
     void InitFrame(const cv::Mat& raw, bool detect = false);
+    void CreateImagePyramid();
 
     Eigen::Vector3d GetCamCenter() const
     {
@@ -27,7 +34,8 @@ struct Frame
     unsigned long _id;
 
     cv::Mat _color;
-    cv::Mat _gray;
+    //cv::Mat _gray;
+    std::vector<cv::Mat> _pyramid;
 
     std::vector<Feature*> _features;
 

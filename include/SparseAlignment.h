@@ -20,6 +20,7 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     SparseAlignment(
+        int min_level, int max_level,
         int n_iter,
         Method method,
         PinholeCamera* camera,
@@ -42,11 +43,15 @@ protected:
 
     cv::Mat resimg_;
 
+    int level_;
+    int max_level_;
+    int min_level_;
+
     void preComputeReferencePatches();
     virtual double computeResiduals(const Sophus::SE3& model,
                                     bool linearize_system,
                                     bool compute_weight_scale = false);
-    virtual int solve();
+    virtual bool solve();
     virtual void update(const ModelType& old_model, ModelType& new_model);
     virtual void finishIteration();
 

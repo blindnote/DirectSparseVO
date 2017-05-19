@@ -46,7 +46,7 @@ protected:
     /// Solve the linear system H*x = Jres. This function must set the update
     /// step in the member variable x_. Must return true if the system could be
     /// solved and false if it was singular.
-    virtual int
+    virtual bool
     solve() = 0;
 
     virtual void

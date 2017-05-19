@@ -3,6 +3,7 @@
 image.width: 640
 image.height: 480
 
+## TUM fr1
 camera.fx: 517.3
 camera.fy: 516.5
 camera.cx: 318.6
@@ -14,7 +15,17 @@ camera.d2: -0.0054
 camera.d3: 0.0026
 camera.d4: 1.1633
 
+## TUM fr2
+# camera.fx: 520.9
+# camera.fy: 521.0
+# camera.cx: 325.1
+# camera.cy: 249.7
+
 depth.scale: 5000
+
+frame.pyramid: 3
+
+feature.detection_threshold: 15.0
 
 tracker.min_features: 50
 
