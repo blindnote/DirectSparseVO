@@ -9,6 +9,7 @@ BasicAlignment::BasicAlignment(int min_level, int max_level, int n_iter,
     method_ = method;
     verbose_ = verbose;
     eps_ = 0.000001;
+    //eps_ = 0.0001;
     _pCamera = camera;
 }
 
@@ -65,7 +66,7 @@ double BasicAlignment::computeResiduals(
 
         const Eigen::Vector3d xyz_ref = fea->_mappoint->_pos_world;
         const Eigen::Vector2d uv_cur2(_pCamera->World2Pixel(xyz_ref, T_cur));
-        const Eigen::Vector2f uv_cur(uv_cur2.cast<float>());  // ?? *scale
+        const Eigen::Vector2f uv_cur(uv_cur2.cast<float>() * scale);  // ?? *scale
         const float u_cur = uv_cur[0];
         const float v_cur = uv_cur[1];
         int u_cur_i = floorf(u_cur);
@@ -96,7 +97,7 @@ double BasicAlignment::computeResiduals(
         chi2 += res*res*weight;
         n_meas_++;
 
-        Eigen::Matrix<double, 2, 6> jacobian_uv_ksai = JacobXYZ2CamSVO(xyz_ref); //JacobXYZ2Cam(xyz_ref);
+        Eigen::Matrix<double, 2, 6> jacobian_uv_ksai = JacobXYZ2CamNeg(xyz_ref);
         Eigen::Matrix<double, 1, 2> jacobian_pixel_uv;
         jacobian_pixel_uv(0, 0) = ( GetPixelValue(&cur_img, u_cur_i+1, v_cur_i) - GetPixelValue(&cur_img, u_cur_i-1, v_cur_i) ) / 2;
         jacobian_pixel_uv(0, 1) = ( GetPixelValue(&cur_img, u_cur_i, v_cur_i+1) - GetPixelValue(&cur_img, u_cur_i, v_cur_i-1) ) / 2;
@@ -104,9 +105,9 @@ double BasicAlignment::computeResiduals(
         if (linearize_system)
         {
             //const Vector6d J(-jacobian_pixel_uv * jacobian_uv_ksai);
-            const Vector6d J(jacobian_pixel_uv * jacobian_uv_ksai);
+            const Vector6d J(jacobian_pixel_uv * jacobian_uv_ksai);   // curr - ref: no negative
             H_.noalias() += J * J.transpose() * weight;
-            Jres_.noalias() -= J * res * weight;
+            Jres_.noalias() -= J * res * weight;            // along negative gradient direction, must be -
         }
     }
 
@@ -126,10 +127,42 @@ bool BasicAlignment::solve()
 void BasicAlignment::update(const ModelType& T_cur_old,
                             ModelType& T_cur_new)
 {
- //   T_cur_new = Sophus::SE3::exp(x_) * T_cur_old;
-    T_cur_new = T_cur_old * Sophus::SE3::exp(-x_);
+    // T_cur_new = Sophus::SE3::exp(x_) * T_cur_old;
+     T_cur_new = T_cur_old * Sophus::SE3::exp(-x_);
+   // T_cur_new = Sophus::SE3::exp(-x_) * T_cur_old;
 }
 
+
+Eigen::Matrix<double,2,6> BasicAlignment::JacobXYZ2CamNeg(const Eigen::Vector3d& xyz)
+{
+    Eigen::Matrix<double,2,6> J;
+
+    const double fx = _pCamera->fx();
+    const double fy = _pCamera->fy();
+
+    const double x = xyz[0];
+    const double y = xyz[1];
+    const double z_inv = 1. / xyz[2];
+    const double z_inv_2 = z_inv * z_inv;
+
+    J(0, 0) = -fx*z_inv;             // fx/z
+    J(0, 1) = 0.0;                  // 0
+    J(0, 2) = fx*x*z_inv_2;           // -fx*x/z^2
+    J(0, 3) = fx*x*y*z_inv_2;         // -fx*x*y/z^2
+    J(0, 4) = -fx - fx*x*x*z_inv_2;       // fx + fx*x^2/z^2)
+    J(0, 5) = fx*y*z_inv;          // -fx*y/z
+
+    J(1, 0) = 0.0;                  // 0
+    J(1, 1) = -fy*z_inv;             // fy/z
+    J(1, 2) = fy*y*z_inv_2;        // -fy*y/z^2
+    J(1, 3) = fy + fy*y*y*z_inv_2;  // -fy - fy*y^2/z^2
+    J(1, 4) = -fy*x*y*z_inv_2;       // fy*x*y/z^2
+    J(1, 5) = fy*x*z_inv;           // fy*x/z
+
+    return J;
+}
+
+// lie algebra: translation first, then rotation
 Eigen::Matrix<double,2,6> BasicAlignment::JacobXYZ2Cam(const Eigen::Vector3d& xyz)
 {
     Eigen::Matrix<double,2,6> J;
@@ -159,7 +192,39 @@ Eigen::Matrix<double,2,6> BasicAlignment::JacobXYZ2Cam(const Eigen::Vector3d& xy
     return J;
 }
 
+// and cur - ref
+// lie algebra: rotation first, then translation
+Eigen::Matrix<double,2,6> BasicAlignment::JacobXYZ2CamSlambook (const Eigen::Vector3d& xyz)
+{
+    Eigen::Matrix<double,2,6> J;
+
+    const double fx = _pCamera->fx();
+    const double fy = _pCamera->fy();
+
+    const double x = xyz[0];
+    const double y = xyz[1];
+    const double z_inv = 1. / xyz[2];
+    const double z_inv_2 = z_inv * z_inv;
+
+    J(0, 0) = -x*y*fx*z_inv_2;
+    J(0, 1) = (1 + (x*x*z_inv_2)) * fx;
+    J(0, 2) = -y*fx*z_inv;
+    J(0, 3) = fx*z_inv;
+    J(0, 4) = 0.0;
+    J(0, 5) = -x*fx*z_inv_2;
+
+    J(1, 0) = -( 1+ y*y*z_inv_2) * fy;
+    J(1, 1) = x*y*fy*z_inv_2;
+    J(1, 2) = fy*x*z_inv;
+    J(1, 3) = 0.0;
+    J(1, 4) = fy*z_inv;
+    J(1, 5) = -fy*y*z_inv_2;
+
+    return J;
+}
+
 // curr - ref, right multiply (-ksai)
+// translation first, then rotation, but negative symbol
 Eigen::Matrix<double,2,6> BasicAlignment::JacobXYZ2CamSVO(const Eigen::Vector3d& xyz)
 {
     Eigen::Matrix<double,2,6> J;
@@ -180,6 +245,7 @@ Eigen::Matrix<double,2,6> BasicAlignment::JacobXYZ2CamSVO(const Eigen::Vector3d&
     J(0, 5) = fx*y*z_inv;         // fx*y/z
 
     J(1, 0) = 0.0;                // 0
+
     J(1, 1) = -fy*z_inv;          // -fy/z
     J(1, 2) = fy*y*z_inv_2;       // fy*y/z^2
     J(1, 3) = fy + y*J(1, 2);     // fy + fy*y^2/z^2

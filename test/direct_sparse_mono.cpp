@@ -45,6 +45,9 @@ int main ( int argc, char** argv )
 
     for(size_t f = 0; f < rgbFiles.size(); f++)
     {
+        if (f < 100) continue;
+        if (f > 200) break;
+
         LOG(INFO) << "image " << f << std::endl;
         cv::Mat color = cv::imread(folder + "/" + rgbFiles[f]);
         if (color.empty()) continue;
@@ -53,7 +56,7 @@ int main ( int argc, char** argv )
         cv::Mat undistorted;
         camera->UndistortImage(color, undistorted);
         Frame* frame = Memory::CreateFrame();
-        frame->InitFrame(undistorted, f == 0);
+        frame->InitFrame(undistorted, camera, f == 0);
 
         //cv::imshow("curr", undistored);
         //cv::waitKey(30);

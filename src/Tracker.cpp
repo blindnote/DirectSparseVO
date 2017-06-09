@@ -1,3 +1,4 @@
+#include <boost/timer.hpp>
 #include "Tracker.h"
 #include "Config.h"
 #include "SparseAlignment.h"
@@ -43,10 +44,14 @@ void Tracker::TrackRefFrame(Frame* frame)
         LOG(WARNING) << "Track with little features, set it as lost." << std::endl;
     }
      */
+    std::shared_ptr<SparseAlignment> pAlign = std::make_shared<SparseAlignment>(0, 2, 30, SparseAlignment::LevenbergMarquardt,
+                                                                               _pCamera, true);
+    std::shared_ptr<BasicAlignment> pAlign2 = std::make_shared<BasicAlignment>(0, 2, 30, BasicAlignment::LevenbergMarquardt,
+                                                                               _pCamera, false);
 
-   std::shared_ptr<SparseAlignment> pAlign = std::make_shared<SparseAlignment>(0, 2, 30, SparseAlignment::GaussNewton,
-                                                                                _pCamera, true);
-   std::shared_ptr<BasicAlignment> pAlign2 = std::make_shared<BasicAlignment>(0, 2, 30, BasicAlignment::GaussNewton,
-                                                                              _pCamera, true);
-    pAlign2->run(_ref, frame);
+    boost::timer timer;
+    timer.restart();
+    pAlign->run(_ref, frame);
+    double timer_elapsed = timer.elapsed();
+    LOG(INFO)<<"SVO's sparse image alignment costs time: "<< 1000*timer_elapsed << "ms" <<std::endl;
 }

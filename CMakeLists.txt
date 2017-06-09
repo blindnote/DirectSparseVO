@@ -5,22 +5,25 @@ project( DirectSparseVO )
 set( CMAKE_CXX_COMPILER "g++" )
 
 # debug
-set( CMAKE_BUILD_TYPE "Debug" )
-set( CMAKE_CXX_FLAGS "-std=c++11 -Wno-reorder" )
+#set( CMAKE_BUILD_TYPE "Debug" )
+#set( CMAKE_CXX_FLAGS "-std=c++11 -Wno-reorder" )
 
 # release
-#set( CMAKE_BUILD_TYPE "Release" )
+set( CMAKE_BUILD_TYPE "Release" )
+SET(CMAKE_VERBOSE_MAKEFILE OFF)
 #set( CMAKE_CXX_FLAGS "-std=c++11 -march=native -O3" )
+set( CMAKE_CXX_FLAGS "-std=c++11 -O3" )
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -D_LINUX -D_REENTRANT -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unknown-pragmas")
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmmx -msse -msse2 -msse3 -mssse3")
+SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
 
-### FIND_PACKAGE(OpenMP)
-### IF(OPENMP_FOUND)
-###  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-###  MESSAGE(STATUS "Compiling with OpenMP support")
-### ENDIF(OPENMP_FOUND)
+FIND_PACKAGE(OpenMP)
+IF(OPENMP_FOUND)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+MESSAGE(STATUS "Compiling with OpenMP support")
+ENDIF(OPENMP_FOUND)
 
 list( APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules )
 set( EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin )

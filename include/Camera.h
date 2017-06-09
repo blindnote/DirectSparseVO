@@ -87,6 +87,7 @@ public:
     }
 
     inline const cv::Mat& CameraMatrixCV() const { return _cvK; }
+    inline const cv::Mat& CameraMatrixCVD() const { return _cvD; }
     inline const Eigen::Matrix3d& K() const { return _K; }
     inline const Eigen::Matrix3d& K_inv() const { return _K_inv; }
     inline int width() const { return _width; }
@@ -102,11 +103,11 @@ public:
     inline float d3() const { return _d[3]; }
     inline float d4() const { return _d[4]; }
 
-    inline bool InFrame(const Eigen::Vector2i& obs, int level = 0, int boundary = 0) const
-    {
-        return (obs[0] >= boundary && obs[0] < _width/(1 << level) - boundary &&
-                obs[1] >= boundary && obs[1] < _height/(1 << level) - boundary);
-    }
+//    inline bool InFrame(const Eigen::Vector2i& obs, int level = 0, int boundary = 0) const
+//    {
+//        return (obs[0] >= boundary && obs[0] < _width/(1 << level) - boundary &&
+//                obs[1] >= boundary && obs[1] < _height/(1 << level) - boundary);
+//    }
 
     // normalized pt in camera coordinates
     inline Eigen::Vector2d UndistortPoint ( const Eigen::Vector2d& pt )
@@ -124,8 +125,8 @@ public:
     {
         if (_distortion)
         {
-            cv::remap(raw, rectified, _undist_map1, _undist_map2, CV_INTER_LINEAR);
-            // cv::undistort(raw, rectified, _cvK, _cvD);
+            //cv::remap(raw, rectified, _undist_map1, _undist_map2, CV_INTER_LINEAR);
+            cv::undistort(raw, rectified, _cvK, _cvD);
             return;
         }
 

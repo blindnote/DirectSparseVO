@@ -16,26 +16,27 @@ SparseAlignment::SparseAlignment(int min_level, int max_level, int n_iter,
 size_t SparseAlignment::run(Frame* ref_frame, Frame* cur_frame)
 {
     reset();
-    LOG(INFO) << "ref_frame._features.size():" << ref_frame->_features.size() << std::endl;
+   // LOG(INFO) << "ref_frame._features.size():" << ref_frame->_features.size() << std::endl;
     if (ref_frame->_features.empty()) return 0;
 
     ref_frame_ = ref_frame;
     cur_frame_ = cur_frame;
 
     ref_patch_cache_ = cv::Mat(ref_frame->_features.size(), patch_area_, CV_32F);
-    std::cout << "ref_patch_cache_.rows:" << ref_patch_cache_.rows
-              << ", ref_patch_cache_.cols:" << ref_patch_cache_.cols << std::endl;
+//    std::cout << "ref_patch_cache_.rows:" << ref_patch_cache_.rows
+//              << ", ref_patch_cache_.cols:" << ref_patch_cache_.cols << std::endl;
     jacobian_cache_.resize(Eigen::NoChange, ref_patch_cache_.rows * patch_area_);
     visible_fts_.resize(ref_patch_cache_.rows, false);
 
-    Sophus::SE3 T_curr_from_ref(cur_frame->_TCW * ref_frame->_TCW.inverse());
+    Sophus::SE3 T_curr_from_ref(cur_frame_->_TCW * ref_frame_->_TCW.inverse());
 
     for (level_ = max_level_; level_ >= min_level_; level_--)
     {
         mu_ = 0.1;
         jacobian_cache_.setZero();
         have_ref_patch_cache_ = false;
-        printf ( "\nPYRAMID LEVEL %i\n---------------\n", level_ );
+        if (verbose_)
+            printf ( "\nPYRAMID LEVEL %i\n---------------\n", level_ );
         optimize(T_curr_from_ref);
     }
     cur_frame->_TCW = T_curr_from_ref * ref_frame->_TCW;
@@ -45,12 +46,13 @@ size_t SparseAlignment::run(Frame* ref_frame, Frame* cur_frame)
 void SparseAlignment::preComputeReferencePatches()
 {
     const int border = patch_halfsize_ + 1;
-    const cv::Mat& ref_img = ref_frame_->_pyramid[level_];
+    //const cv::Mat& ref_img = ref_frame_->_pyramid[level_];
+    const cv::Mat& ref_img = ref_frame_->_pyramid.at(level_);
     const int stride = ref_img.cols;
     const float scale = 1.0f / ( 1<<level_ );          // 1.0f/(1<<level-)
     const Eigen::Vector3d ref_pos = ref_frame_->GetCamCenter();
 
-    const double focal_length = fabs(_pCamera->focal());
+    const double focal_length = _pCamera->focal();
     size_t feature_counter = 0;
     std::vector<bool>::iterator visibility_it = visible_fts_.begin();
 
@@ -75,6 +77,19 @@ void SparseAlignment::preComputeReferencePatches()
         // cannot just take the 3d points coordinate because of the reprojection errors in the reference image!!!
         // const double depth( (fea->_mappoint->_pos_world - ref_pos).norm() );
        // LOG(INFO) << "depth = " << depth << ", features depth = " << fea->_depth << std::endl;
+        /*
+        const double depth = (fea->_mappoint->_pos_world - ref_frame_->GetCamCenter()).norm();
+        cv::Point2f tmp_uv(fea->_pixel[0], fea->_pixel[1]), px;
+        const cv::Mat src_pt(1, 1, CV_32FC2, &tmp_uv.x);
+        cv::Mat dst_pt(1, 1, CV_32FC2, &px.x);
+        cv::undistortPoints(src_pt, dst_pt, _pCamera->CameraMatrixCV().clone(), _pCamera->CameraMatrixCVD().clone());
+        Eigen::Vector3d tmp_xyz;
+        tmp_xyz[0] = px.x;
+        tmp_xyz[1] = px.y;
+        tmp_xyz[2] = 1.0;
+
+        const Eigen::Vector3d xyz_ref( tmp_xyz *  depth);
+         */
         //const Vector3d xyz_ref(fea->f*depth);  //f(frame->cam_->cam2world(px))
         const Eigen::Vector3d xyz_ref( _pCamera->Pixel2Camera(fea->_pixel, fea->_depth) );
 
@@ -108,7 +123,7 @@ void SparseAlignment::preComputeReferencePatches()
 
                 // cache the jacobian
                 jacobian_cache_.col(feature_counter * patch_area_ + pixel_counter) =
-                    ( dx*frame_jac.row(0) + dy*frame_jac.row(1) )*(focal_length / scale);
+                    ( dx*frame_jac.row(0) + dy*frame_jac.row(1) )*(focal_length / (1 << level_));
             }
         }
     }
@@ -121,7 +136,7 @@ double SparseAlignment::computeResiduals(const Sophus::SE3& T_cur_from_ref,
                                          bool compute_weight_scale)
 {
     // Warp the current image such that it aligns with the reference image
-    const cv::Mat& cur_img = cur_frame_->_pyramid[level_];
+    const cv::Mat& cur_img = cur_frame_->_pyramid.at(level_);
 
     if (linearize_system)
         resimg_ = cv::Mat(cur_img.size(), CV_32F, cv::Scalar(0));
@@ -136,7 +151,7 @@ double SparseAlignment::computeResiduals(const Sophus::SE3& T_cur_from_ref,
 
     const int stride = cur_img.cols;
     const int border = patch_halfsize_ + 1;
-    const float scale = 1 << level_;
+    const float scale = 1.0f / (1 << level_);
     const Eigen::Vector3d ref_pos(ref_frame_->GetCamCenter());
     float chi2 = 0.0;
     size_t feature_counter = 0; // is used to compute the index of the cached jacobian
@@ -150,13 +165,24 @@ double SparseAlignment::computeResiduals(const Sophus::SE3& T_cur_from_ref,
 
         Feature* fea = (*it);
         // compute pixel location in cur img
+        /*
         const double depth = (fea->_mappoint->_pos_world - ref_pos).norm();
+        cv::Point2f tmp_uv(fea->_pixel[0], fea->_pixel[1]), px;
+        const cv::Mat src_pt(1, 1, CV_32FC2, &tmp_uv.x);
+        cv::Mat dst_pt(1, 1, CV_32FC2, &px.x);
+        cv::undistortPoints(src_pt, dst_pt, _pCamera->CameraMatrixCV().clone(), _pCamera->CameraMatrixCVD().clone());
+        Eigen::Vector3d tmp_xyz;
+        tmp_xyz[0] = px.x;
+        tmp_xyz[1] = px.y;
+        tmp_xyz[2] = 1.0;
+        const Eigen::Vector3d xyz_ref( tmp_xyz *  depth);
+         */
         //const Eigen::Vector3d xyz_ref(fea->f*depth);
         const Eigen::Vector3d xyz_ref(_pCamera->Pixel2Camera(fea->_pixel, fea->_depth));
         const Eigen::Vector3d xyz_cur(T_cur_from_ref * xyz_ref);
-        const Eigen::Vector2f uv_cur(_pCamera->Camera2Pixel(xyz_cur).cast<float>() * scale);
-        const float u_cur = uv_cur[0];
-        const float v_cur = uv_cur[1];
+        const Eigen::Vector2f uv_cur_pyr(_pCamera->Camera2Pixel(xyz_cur).cast<float>() * scale);
+        const float u_cur = uv_cur_pyr[0];
+        const float v_cur = uv_cur_pyr[1];
         int u_cur_i = floorf(u_cur);
         int v_cur_i = floorf(v_cur);
 
@@ -234,11 +260,11 @@ void SparseAlignment::update(const ModelType& T_cur_from_ref_old,
 
 void SparseAlignment::finishIteration()
 {
-    cv::namedWindow ( "residuals", CV_WINDOW_AUTOSIZE );
-    cv::imshow ( "residuals", resimg_ * 10 );
-    cv::waitKey ( 0 );
-    //cv::waitKey ( 200 );
-    //cv::destroyWindow("residuals");
+//    cv::namedWindow ( "residuals", CV_WINDOW_AUTOSIZE );
+//    cv::imshow ( "residuals", resimg_ * 10 );
+//    //cv::waitKey ( 0 );
+//    cv::waitKey ( 200 );
+//    cv::destroyWindow("residuals");
 }
 
 // *************************************************************************************

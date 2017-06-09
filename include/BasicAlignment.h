@@ -45,6 +45,8 @@ protected:
 
 private:
     Eigen::Matrix<double,2,6> JacobXYZ2Cam(const Eigen::Vector3d& xyz);
+    Eigen::Matrix<double,2,6> JacobXYZ2CamNeg(const Eigen::Vector3d& xyz);
+    Eigen::Matrix<double,2,6> JacobXYZ2CamSlambook(const Eigen::Vector3d& xyz);
     Eigen::Matrix<double,2,6> JacobXYZ2CamSVO(const Eigen::Vector3d& xyz);
 
     inline float GetPixelValue(const cv::Mat* image, float px, float py)

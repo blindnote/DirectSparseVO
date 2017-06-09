@@ -19,6 +19,8 @@ class SparseAlignment : public NLLSSolver<6, Sophus::SE3>
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+    cv::Mat resimg_;
+
     SparseAlignment(
         int min_level, int max_level,
         int n_iter,
@@ -32,8 +34,9 @@ public:
 protected:
     Frame* ref_frame_;
     Frame* cur_frame_;
-
-    PinholeCamera* _pCamera = nullptr;
+    int level_;
+    int max_level_;
+    int min_level_;
 
     // cache:
     Eigen::Matrix<double, 6, Eigen::Dynamic, Eigen::ColMajor> jacobian_cache_;
@@ -41,11 +44,7 @@ protected:
     cv::Mat ref_patch_cache_;
     std::vector<bool> visible_fts_;
 
-    cv::Mat resimg_;
-
-    int level_;
-    int max_level_;
-    int min_level_;
+    PinholeCamera* _pCamera = nullptr;
 
     void preComputeReferencePatches();
     virtual double computeResiduals(const Sophus::SE3& model,

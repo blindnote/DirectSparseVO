@@ -23,8 +23,10 @@ camera.d4: 1.1633
 
 depth.scale: 5000
 
-frame.pyramid: 3
-
+frame.pyramid: 5
+#25
+feature.cell: 10
+#20
 feature.detection_threshold: 15.0
 
 tracker.min_features: 50
